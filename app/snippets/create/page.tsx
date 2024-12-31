@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Copy, Check, Wand2 } from "lucide-react";
 import { Icons } from "@/components/icons";
 import { toast } from "sonner";
 import {
@@ -42,6 +42,19 @@ import {
   oneLight,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import prettier from "prettier/standalone";
+import parserBabel from "prettier/parser-babel";
+import parserHtml from "prettier/parser-html";
+import parserPostcss from "prettier/parser-postcss";
+import parserTypescript from "prettier/parser-typescript";
+import parserMarkdown from "prettier/parser-markdown";
+import phpPlugin from "@prettier/plugin-php/standalone";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const createSnippetSchema = z.object({
   title: z
@@ -106,6 +119,28 @@ const CATEGORIES = [
   "Testing",
   "DevOps",
 ];
+
+const PARSERS: Record<string, any> = {
+  javascript: { parser: "babel", plugin: parserBabel },
+  typescript: { parser: "typescript", plugin: parserTypescript },
+  html: { parser: "html", plugin: parserHtml },
+  css: { parser: "css", plugin: parserPostcss },
+  markdown: { parser: "markdown", plugin: parserMarkdown },
+  php: { parser: "php", plugin: phpPlugin },
+};
+
+// Function to check if formatting is supported for a language
+const isFormattingSupported = (language: string) => {
+  const normalizedLanguage = language?.toLowerCase();
+  return (
+    normalizedLanguage === "javascript" ||
+    normalizedLanguage === "typescript" ||
+    normalizedLanguage === "html" ||
+    normalizedLanguage === "css" ||
+    normalizedLanguage === "markdown" ||
+    normalizedLanguage === "php"
+  );
+};
 
 export default function CreateSnippetPage() {
   const router = useRouter();
@@ -187,6 +222,61 @@ export default function CreateSnippetPage() {
     }
   };
 
+  function CopyButton({ content }: { content: string }) {
+    const [copied, setCopied] = useState(false);
+
+    const copy = () => {
+      if (!content) return;
+      navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-8 space-x-2"
+        onClick={copy}
+      >
+        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        <span>{copied ? "Copied!" : "Copy code"}</span>
+      </Button>
+    );
+  }
+
+  const formatCode = async () => {
+    const currentCode = form.getValues("code");
+    const currentLanguage = form.getValues("language")?.toLowerCase();
+
+    if (!currentCode || !currentLanguage) return;
+
+    const parserConfig = PARSERS[currentLanguage];
+    if (!parserConfig) {
+      toast.error(`Formatting not supported for ${form.getValues("language")}`);
+      return;
+    }
+
+    try {
+      const formatted = await prettier.format(currentCode, {
+        parser: parserConfig.parser,
+        plugins: [parserConfig.plugin],
+        semi: true,
+        singleQuote: true,
+        printWidth: 80,
+        tabWidth: 2,
+        trailingComma: "es5",
+      });
+
+      form.setValue("code", formatted);
+      toast.success("Code formatted successfully");
+    } catch (error) {
+      console.error("Format error:", error);
+      toast.error("Failed to format code. Make sure the code is valid.");
+    }
+  };
+
   return (
     <div className="container max-w-4xl py-6">
       <Card>
@@ -206,10 +296,15 @@ export default function CreateSnippetPage() {
                   <FormItem>
                     <FormLabel>Title</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Enter a descriptive title"
-                        {...field}
-                      />
+                      <div className="relative">
+                        <Input
+                          placeholder="Enter a descriptive title"
+                          {...field}
+                        />
+                        <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                          {field.value.length}/100
+                        </div>
+                      </div>
                     </FormControl>
                     <FormDescription>
                       A clear title that describes what your code does
@@ -226,11 +321,16 @@ export default function CreateSnippetPage() {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Describe what your code snippet does"
-                        className="min-h-[100px]"
-                        {...field}
-                      />
+                      <div className="relative">
+                        <Textarea
+                          placeholder="Describe what your code snippet does"
+                          className="min-h-[100px]"
+                          {...field}
+                        />
+                        <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                          {field.value.length}/2000
+                        </div>
+                      </div>
                     </FormControl>
                     <FormDescription>
                       Explain how to use the code and what problem it solves
@@ -253,15 +353,52 @@ export default function CreateSnippetPage() {
                       </TabsList>
                       <TabsContent value="write">
                         <FormControl>
-                          <Textarea
-                            placeholder="Paste your code here"
-                            className="min-h-[300px] font-mono"
-                            {...field}
-                          />
+                          <div className="relative">
+                            <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={formatCode}
+                                        disabled={
+                                          !code ||
+                                          !isFormattingSupported(language)
+                                        }
+                                      >
+                                        <Wand2 className="mr-2 h-4 w-4" />
+                                        Format
+                                      </Button>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {isFormattingSupported(language)
+                                      ? "Format your code"
+                                      : "Formatting not available for this language"}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <Textarea
+                              placeholder="Paste your code here"
+                              className="min-h-[300px] font-mono"
+                              {...field}
+                            />
+                            <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                              {field.value.length}/10000
+                            </div>
+                          </div>
                         </FormControl>
                       </TabsContent>
                       <TabsContent value="preview">
                         <div className="relative rounded-lg border">
+                          <div className="flex items-center justify-between border-b px-4 py-2">
+                            <span className="text-sm font-medium">Preview</span>
+                            <CopyButton content={code} />
+                          </div>
                           <div className="overflow-x-auto p-4">
                             <SyntaxHighlighter
                               language={language?.toLowerCase() || "plaintext"}
@@ -271,6 +408,14 @@ export default function CreateSnippetPage() {
                                 background: "transparent",
                                 minHeight: "300px",
                               }}
+                              showLineNumbers={true}
+                              wrapLines={true}
+                              lineProps={(lineNumber) => ({
+                                style: {
+                                  display: "block",
+                                  width: "100%",
+                                },
+                              })}
                             >
                               {code || "// Your code preview will appear here"}
                             </SyntaxHighlighter>

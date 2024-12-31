@@ -2,43 +2,97 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Icons } from "@/components/icons";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import type { Snippet } from "@/types";
-import { formatDistanceToNow } from "date-fns";
-import { Heart, MessageSquare, Share2, Bookmark, Copy } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import {
   oneDark,
   oneLight,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Copy, Check, Share2, Link, ArrowRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { formatDistanceToNow } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+
+function SnippetCard({ snippet }: { snippet: any }) {
+  return (
+    <Card className="group cursor-pointer transition-colors hover:bg-muted/50">
+      <CardHeader className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <CardTitle className="line-clamp-1 text-base">
+              {snippet.title}
+            </CardTitle>
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <div className="flex items-center space-x-2">
+                <Avatar className="h-5 w-5">
+                  <AvatarImage src={snippet.author?.image} />
+                  <AvatarFallback>
+                    {snippet.author?.name?.[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="line-clamp-1">{snippet.author?.name}</span>
+              </div>
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary">{snippet.language}</Badge>
+          {snippet.framework && (
+            <Badge variant="outline">{snippet.framework}</Badge>
+          )}
+        </div>
+      </CardHeader>
+    </Card>
+  );
+}
 
 export default function SnippetPage() {
   const router = useRouter();
   const { id } = useParams();
-  const { data: session } = useSession();
   const { theme } = useTheme();
-  const [snippet, setSnippet] = useState<Snippet | null>(null);
+  const [snippet, setSnippet] = useState<any>(null);
+  const [relatedSnippets, setRelatedSnippets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [comment, setComment] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
-    const fetchSnippet = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`/api/snippets/${id}`);
-        if (!response.ok) {
+        const [snippetResponse, relatedResponse] = await Promise.all([
+          fetch(`/api/snippets/${id}`),
+          fetch(
+            `/api/snippets?language=${encodeURIComponent(snippet?.language || "")}&limit=3`
+          ),
+        ]);
+
+        if (!snippetResponse.ok) {
           throw new Error("Failed to fetch snippet");
         }
-        const data = await response.json();
-        setSnippet(data);
+
+        const snippetData = await snippetResponse.json();
+        setSnippet(snippetData);
+
+        if (relatedResponse.ok) {
+          const relatedData = await relatedResponse.json();
+          setRelatedSnippets(
+            relatedData.filter((s: any) => s.id !== id).slice(0, 3)
+          );
+        }
       } catch (error) {
         toast.error("Failed to fetch snippet");
         router.push("/snippets");
@@ -47,24 +101,35 @@ export default function SnippetPage() {
       }
     };
 
-    fetchSnippet();
-  }, [id, router]);
+    fetchData();
+  }, [id, router, snippet?.language]);
 
-  const copyToClipboard = () => {
-    if (snippet) {
-      navigator.clipboard.writeText(snippet.code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const copyCode = () => {
+    if (!snippet?.code) return;
+    navigator.clipboard.writeText(snippet.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareSnippet = () => {
+    setIsShareDialogOpen(true);
+  };
+
+  const copyLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+    toast.success("Link copied to clipboard!");
   };
 
   if (isLoading) {
     return (
       <div className="container max-w-4xl py-6">
-        <div className="space-y-6">
-          <div className="h-8 w-64 animate-pulse rounded-md bg-muted" />
-          <div className="h-24 animate-pulse rounded-md bg-muted" />
-          <div className="h-64 animate-pulse rounded-md bg-muted" />
+        <div className="space-y-4">
+          <div className="h-8 w-3/4 animate-pulse rounded-lg bg-muted"></div>
+          <div className="h-24 animate-pulse rounded-lg bg-muted"></div>
+          <div className="h-[300px] animate-pulse rounded-lg bg-muted"></div>
         </div>
       </div>
     );
@@ -75,147 +140,153 @@ export default function SnippetPage() {
   }
 
   return (
-    <div className="container max-w-4xl py-6">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight">
-              {snippet.title}
-            </h1>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <div className="flex items-center space-x-2">
-                <Avatar className="h-6 w-6">
-                  <AvatarImage src={snippet.author.image || ""} />
-                  <AvatarFallback>
-                    {snippet.author.name?.[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span>{snippet.author.name}</span>
-              </div>
-              <span>•</span>
-              <span>
-                {formatDistanceToNow(new Date(snippet.createdAt), {
-                  addSuffix: true,
-                })}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="icon">
-              <Share2 className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon">
-              <Bookmark className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Description */}
-        <p className="text-muted-foreground">{snippet.description}</p>
-
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2">
-          <Badge>{snippet.language}</Badge>
-          {snippet.framework && (
-            <Badge variant="outline">{snippet.framework}</Badge>
-          )}
-          {snippet.tags.map((tag) => (
-            <Badge key={tag} variant="secondary">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-
-        {/* Code */}
-        <div className="relative rounded-lg border">
-          <div className="flex items-center justify-between border-b px-4 py-2">
-            <span className="text-sm font-medium">Code</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 space-x-2"
-              onClick={copyToClipboard}
-            >
-              <Copy className="h-4 w-4" />
-              <span>{copied ? "Copied!" : "Copy code"}</span>
-            </Button>
-          </div>
-          <div className="overflow-x-auto p-4">
-            <SyntaxHighlighter
-              language={snippet.language.toLowerCase()}
-              style={theme === "dark" ? oneDark : oneLight}
-              customStyle={{
-                margin: 0,
-                background: "transparent",
-              }}
-            >
-              {snippet.code}
-            </SyntaxHighlighter>
-          </div>
-        </div>
-
-        {/* Interactions */}
-        <div className="flex items-center space-x-4 border-t pt-4">
-          <Button variant="ghost" size="sm" className="space-x-2">
-            <Heart className="h-4 w-4" />
-            <span>{snippet.likes}</span>
-          </Button>
-          <Button variant="ghost" size="sm" className="space-x-2">
-            <MessageSquare className="h-4 w-4" />
-            <span>{snippet.comments?.length || 0}</span>
-          </Button>
-        </div>
-
-        {/* Comments */}
+    <div className="container py-6">
+      <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
         <div className="space-y-6">
-          <h2 className="text-xl font-semibold tracking-tight">Comments</h2>
-          {session ? (
-            <div className="space-y-4">
-              <Textarea
-                placeholder="Leave a comment..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-              />
-              <Button disabled={!comment.trim() || isSubmitting}>
-                {isSubmitting && (
-                  <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+          <Card className="overflow-hidden">
+            <div className="border-b p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-bold">{snippet.title}</h2>
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <div className="flex items-center space-x-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={snippet.author?.image} />
+                        <AvatarFallback>
+                          {snippet.author?.name?.[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{snippet.author?.name}</span>
+                    </div>
+                    <span>•</span>
+                    <span>
+                      {formatDistanceToNow(new Date(snippet.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button variant="outline" size="sm" onClick={shareSnippet}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={copyCode}>
+                    {copied ? (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy code
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <p className="mt-4 text-muted-foreground">
+                {snippet.description}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge variant="secondary">{snippet.language}</Badge>
+                {snippet.framework && (
+                  <Badge variant="secondary">{snippet.framework}</Badge>
                 )}
-                Comment
+                <Badge variant="secondary">{snippet.category}</Badge>
+                {snippet.tags?.map((tag: string) => (
+                  <Badge key={tag} variant="outline">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="overflow-x-auto p-6">
+              <SyntaxHighlighter
+                language={snippet.language?.toLowerCase() || "plaintext"}
+                style={theme === "dark" ? oneDark : oneLight}
+                customStyle={{
+                  margin: 0,
+                  borderRadius: "0.5rem",
+                }}
+                showLineNumbers={true}
+                wrapLines={true}
+              >
+                {snippet.code}
+              </SyntaxHighlighter>
+            </div>
+          </Card>
+        </div>
+
+        {relatedSnippets.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">More like this</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() =>
+                  router.push(`/snippets?language=${snippet.language}`)
+                }
+              >
+                View all
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Please sign in to leave a comment.
-            </p>
-          )}
-          <div className="space-y-4">
-            {snippet.comments?.map((comment) => (
-              <div key={comment.id} className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={comment.author.image || ""} />
-                    <AvatarFallback>
-                      {comment.author.name?.[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium">
-                    {comment.author.name}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(comment.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </span>
+            <div className="grid gap-4">
+              {relatedSnippets.map((relatedSnippet) => (
+                <div
+                  key={relatedSnippet.id}
+                  onClick={() => router.push(`/snippets/${relatedSnippet.id}`)}
+                >
+                  <SnippetCard snippet={relatedSnippet} />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {comment.content}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
+
+      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share snippet</DialogTitle>
+            <DialogDescription>
+              Share this snippet with others by copying the link below
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2">
+            <div className="grid flex-1 gap-2">
+              <Input readOnly value={window.location.href} className="w-full" />
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              className="px-3"
+              onClick={copyLink}
+            >
+              {linkCopied ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              <span className="sr-only">Copy link</span>
+            </Button>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => setIsShareDialogOpen(false)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

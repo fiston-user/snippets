@@ -295,7 +295,7 @@ export default function CreateSnippetPage() {
   };
 
   return (
-    <div className="container max-w-4xl py-6">
+    <div className="container py-6">
       <Card>
         <CardHeader>
           <CardTitle>Create Snippet</CardTitle>
@@ -309,11 +309,15 @@ export default function CreateSnippetPage() {
             onValueChange={setActiveTab}
             className="space-y-6"
           >
-            <TabsList>
-              <TabsTrigger value="form">Manual Entry</TabsTrigger>
-              <TabsTrigger value="ai">AI Assistant</TabsTrigger>
+            <TabsList className="w-full justify-start">
+              <TabsTrigger value="form" className="flex-1 sm:flex-none">
+                Manual Entry
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="flex-1 sm:flex-none">
+                AI Assistant
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="form">
+            <TabsContent value="form" className="space-y-6">
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
@@ -619,7 +623,7 @@ export default function CreateSnippetPage() {
                 </form>
               </Form>
             </TabsContent>
-            <TabsContent value="ai">
+            <TabsContent value="ai" className="min-h-[600px]">
               <div className="space-y-4">
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">

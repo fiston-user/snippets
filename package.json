@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
+    "@google/generative-ai": "^0.21.0",
     "@hookform/resolvers": "^3.9.1",
     "@prettier/plugin-php": "^0.22.2",
     "@prettier/plugin-ruby": "^4.0.4",

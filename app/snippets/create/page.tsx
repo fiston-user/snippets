@@ -55,6 +55,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SnippetAIAssistant } from "@/components/snippet-ai-assistant";
 
 const createSnippetSchema = z.object({
   title: z
@@ -146,6 +147,7 @@ export default function CreateSnippetPage() {
   const router = useRouter();
   const { theme } = useTheme();
   const [tagInput, setTagInput] = useState("");
+  const [activeTab, setActiveTab] = useState("form");
 
   const form = useForm<FormData>({
     resolver: zodResolver(createSnippetSchema),
@@ -277,6 +279,21 @@ export default function CreateSnippetPage() {
     }
   };
 
+  const handleAIGenerated = (snippet: any) => {
+    form.setValue("title", snippet.title);
+    form.setValue("description", snippet.description);
+    form.setValue("code", snippet.code);
+    form.setValue("language", snippet.language);
+    if (snippet.framework) {
+      form.setValue("framework", snippet.framework);
+    }
+    form.setValue("category", snippet.category);
+    form.setValue("tags", snippet.tags);
+
+    // Switch to the form tab after generation
+    setActiveTab("form");
+  };
+
   return (
     <div className="container max-w-4xl py-6">
       <Card>
@@ -287,302 +304,334 @@ export default function CreateSnippetPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          placeholder="Enter a descriptive title"
-                          {...field}
-                        />
-                        <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
-                          {field.value.length}/100
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      A clear title that describes what your code does
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Textarea
-                          placeholder="Describe what your code snippet does"
-                          className="min-h-[100px]"
-                          {...field}
-                        />
-                        <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
-                          {field.value.length}/2000
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Explain how to use the code and what problem it solves
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Code</FormLabel>
-                    <Tabs defaultValue="write" className="w-full">
-                      <TabsList className="mb-2">
-                        <TabsTrigger value="write">Write</TabsTrigger>
-                        <TabsTrigger value="preview">Preview</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="write">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-6"
+          >
+            <TabsList>
+              <TabsTrigger value="form">Manual Entry</TabsTrigger>
+              <TabsTrigger value="ai">AI Assistant</TabsTrigger>
+            </TabsList>
+            <TabsContent value="form">
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                >
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={formatCode}
-                                        disabled={
-                                          !code ||
-                                          !isFormattingSupported(language)
-                                        }
-                                      >
-                                        <Wand2 className="mr-2 h-4 w-4" />
-                                        Format
-                                      </Button>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {isFormattingSupported(language)
-                                      ? "Format your code"
-                                      : "Formatting not available for this language"}
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                            <Textarea
-                              placeholder="Paste your code here"
-                              className="min-h-[300px] font-mono"
+                            <Input
+                              placeholder="Enter a descriptive title"
                               {...field}
                             />
                             <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
-                              {field.value.length}/10000
+                              {field.value.length}/100
                             </div>
                           </div>
                         </FormControl>
-                      </TabsContent>
-                      <TabsContent value="preview">
-                        <div className="relative rounded-lg border">
-                          <div className="flex items-center justify-between border-b px-4 py-2">
-                            <span className="text-sm font-medium">Preview</span>
-                            <CopyButton content={code} />
-                          </div>
-                          <div className="overflow-x-auto p-4">
-                            <SyntaxHighlighter
-                              language={language?.toLowerCase() || "plaintext"}
-                              style={theme === "dark" ? oneDark : oneLight}
-                              customStyle={{
-                                margin: 0,
-                                background: "transparent",
-                                minHeight: "300px",
-                              }}
-                              showLineNumbers={true}
-                              wrapLines={true}
-                              lineProps={(lineNumber) => ({
-                                style: {
-                                  display: "block",
-                                  width: "100%",
-                                },
-                              })}
-                            >
-                              {code || "// Your code preview will appear here"}
-                            </SyntaxHighlighter>
-                          </div>
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                    <FormDescription>
-                      The actual code snippet you want to share
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                        <FormDescription>
+                          A clear title that describes what your code does
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="language"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Language</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a language" />
-                          </SelectTrigger>
+                          <div className="relative">
+                            <Textarea
+                              placeholder="Describe what your code snippet does"
+                              className="min-h-[100px]"
+                              {...field}
+                            />
+                            <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                              {field.value.length}/2000
+                            </div>
+                          </div>
                         </FormControl>
-                        <SelectContent>
-                          {LANGUAGES.map((lang) => (
-                            <SelectItem key={lang} value={lang}>
-                              {lang}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        The programming language used
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormDescription>
+                          Explain how to use the code and what problem it solves
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="framework"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Framework (Optional)</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                  <FormField
+                    control={form.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Code</FormLabel>
+                        <Tabs defaultValue="write" className="w-full">
+                          <TabsList className="mb-2">
+                            <TabsTrigger value="write">Write</TabsTrigger>
+                            <TabsTrigger value="preview">Preview</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="write">
+                            <FormControl>
+                              <div className="relative">
+                                <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={formatCode}
+                                            disabled={
+                                              !code ||
+                                              !isFormattingSupported(language)
+                                            }
+                                          >
+                                            <Wand2 className="mr-2 h-4 w-4" />
+                                            Format
+                                          </Button>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {isFormattingSupported(language)
+                                          ? "Format your code"
+                                          : "Formatting not available for this language"}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                                <Textarea
+                                  placeholder="Paste your code here"
+                                  className="min-h-[300px] font-mono"
+                                  {...field}
+                                />
+                                <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                                  {field.value.length}/10000
+                                </div>
+                              </div>
+                            </FormControl>
+                          </TabsContent>
+                          <TabsContent value="preview">
+                            <div className="relative rounded-lg border">
+                              <div className="flex items-center justify-between border-b px-4 py-2">
+                                <span className="text-sm font-medium">
+                                  Preview
+                                </span>
+                                <CopyButton content={code} />
+                              </div>
+                              <div className="overflow-x-auto p-4">
+                                <SyntaxHighlighter
+                                  language={
+                                    language?.toLowerCase() || "plaintext"
+                                  }
+                                  style={theme === "dark" ? oneDark : oneLight}
+                                  customStyle={{
+                                    margin: 0,
+                                    background: "transparent",
+                                    minHeight: "300px",
+                                  }}
+                                  showLineNumbers={true}
+                                  wrapLines={true}
+                                  lineProps={(lineNumber) => ({
+                                    style: {
+                                      display: "block",
+                                      width: "100%",
+                                    },
+                                  })}
+                                >
+                                  {code ||
+                                    "// Your code preview will appear here"}
+                                </SyntaxHighlighter>
+                              </div>
+                            </div>
+                          </TabsContent>
+                        </Tabs>
+                        <FormDescription>
+                          The actual code snippet you want to share
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="language"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Language</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a language" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {LANGUAGES.map((lang) => (
+                                <SelectItem key={lang} value={lang}>
+                                  {lang}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            The programming language used
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="framework"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Framework (Optional)</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a framework" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {FRAMEWORKS.map((fw) => (
+                                <SelectItem key={fw} value={fw}>
+                                  {fw}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            The framework or library used (if any)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {CATEGORIES.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Choose the most relevant category for your snippet
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="tags"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tags</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a framework" />
-                          </SelectTrigger>
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap gap-2">
+                              {field.value.map((tag) => (
+                                <Badge key={tag} variant="secondary">
+                                  {tag}
+                                  <button
+                                    type="button"
+                                    className="ml-1"
+                                    onClick={() => removeTag(tag)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                              <Input
+                                placeholder="Add a tag (press Enter)"
+                                className="!mt-0 w-[200px]"
+                                value={tagInput}
+                                onChange={(e) => setTagInput(e.target.value)}
+                                onKeyDown={handleTagInputKeyDown}
+                              />
+                            </div>
+                          </div>
                         </FormControl>
-                        <SelectContent>
-                          {FRAMEWORKS.map((fw) => (
-                            <SelectItem key={fw} value={fw}>
-                              {fw}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        The framework or library used (if any)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                        <FormDescription>
+                          Add up to 5 tags to help others find your snippet
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
+                  <div className="flex items-center gap-4">
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting && (
+                        <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Create Snippet
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.back()}
+                      disabled={isSubmitting}
                     >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {CATEGORIES.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Choose the most relevant category for your snippet
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="tags"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tags</FormLabel>
-                    <FormControl>
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                          {field.value.map((tag) => (
-                            <Badge key={tag} variant="secondary">
-                              {tag}
-                              <button
-                                type="button"
-                                className="ml-1"
-                                onClick={() => removeTag(tag)}
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </Badge>
-                          ))}
-                          <Input
-                            placeholder="Add a tag (press Enter)"
-                            className="!mt-0 w-[200px]"
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onKeyDown={handleTagInputKeyDown}
-                          />
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Add up to 5 tags to help others find your snippet
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex items-center gap-4">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting && (
-                    <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Create Snippet
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.back()}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </TabsContent>
+            <TabsContent value="ai">
+              <div className="space-y-4">
+                <div className="rounded-lg border p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Let AI help you create a snippet. Describe what you want to
+                    create, and our AI assistant will generate a complete
+                    snippet for you. You can then edit it before saving.
+                  </p>
+                </div>
+                <SnippetAIAssistant onSnippetGenerated={handleAIGenerated} />
               </div>
-            </form>
-          </Form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

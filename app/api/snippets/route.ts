@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import * as z from "zod";
+import { Prisma } from "@prisma/client";
 
 const createSnippetSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -70,27 +71,35 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const language = searchParams.get("language");
-    const framework = searchParams.get("framework");
-    const category = searchParams.get("category");
+    const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
+    const category = searchParams.get("category");
+    const framework = searchParams.get("framework");
+    const language = searchParams.get("language");
 
-    const where = {
+    const where: Prisma.SnippetWhereInput = {
       isPublic: true,
-      ...(language ? { language } : {}),
-      ...(framework ? { framework } : {}),
-      ...(category ? { category } : {}),
-      ...(search
-        ? {
-            OR: [
-              { title: { contains: search, mode: "insensitive" } },
-              { description: { contains: search, mode: "insensitive" } },
-            ],
-          }
-        : {}),
+      ...(search && {
+        OR: [
+          {
+            title: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            description: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        ],
+      }),
+      ...(category && { category }),
+      ...(framework && { framework }),
+      ...(language && { language }),
     };
 
     const snippets = await prisma.snippet.findMany({
@@ -111,6 +120,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json(snippets);
   } catch (error) {
-    return new NextResponse(null, { status: 500 });
+    console.error("Error fetching snippets:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch snippets" },
+      { status: 500 }
+    );
   }
 }

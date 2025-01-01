@@ -52,6 +52,7 @@ export const Icons = {
   moon: Moon,
   laptop: Laptop,
   gitHub: Github,
+  google: Github,
   twitter: Twitter,
   check: Check,
   bookmark: Bookmark,

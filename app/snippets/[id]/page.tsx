@@ -186,7 +186,7 @@ export default function SnippetPage() {
                   </Button>
                 </div>
               </div>
-              <p className="mt-4 text-muted-foreground">
+              <p className="mt-4 text-muted-foreground line-clamp-2">
                 {snippet.description}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -209,6 +209,7 @@ export default function SnippetPage() {
                 customStyle={{
                   margin: 0,
                   borderRadius: "0.5rem",
+                  background: "transparent",
                 }}
                 showLineNumbers={true}
                 wrapLines={true}
@@ -219,7 +220,7 @@ export default function SnippetPage() {
           </Card>
         </div>
 
-        {relatedSnippets.length > 0 && (
+        {/* {relatedSnippets.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">More like this</h3>
@@ -246,7 +247,7 @@ export default function SnippetPage() {
               ))}
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>

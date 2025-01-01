@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { Providers } from "@/components/providers";
 import { Toaster } from "sonner";
+import { Breadcrumb } from "@/components/breadcrumb";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,6 +25,7 @@ export default function RootLayout({
         <Providers>
           <div className="min-h-screen bg-background">
             <Navbar />
+            <Breadcrumb />
             <main className="container mx-auto px-4 py-6">{children}</main>
           </div>
           <Toaster richColors closeButton position="top-right" />

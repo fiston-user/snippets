@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const result = await model.generateContent(`
       You are a code snippet generator. Generate a code snippet based on this request: "${prompt}"
@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       4. Framework should only be included if actually used
       5. Maximum 5 relevant tags
       6. Code should include comments and proper formatting
+      7. Category must be exactly one of the specified values (case-sensitive)
     `);
 
     const response = result.response;

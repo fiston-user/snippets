@@ -2,58 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { SnippetCard } from "@/components/snippet-card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Filter } from "lucide-react";
 import type { Snippet } from "@/types";
 import { toast } from "sonner";
-
-const LANGUAGES = [
-  "JavaScript",
-  "TypeScript",
-  "Python",
-  "Java",
-  "C++",
-  "Ruby",
-  "Go",
-  "Rust",
-  "PHP",
-  "Swift",
-];
-
-const FRAMEWORKS = [
-  "React",
-  "Vue",
-  "Angular",
-  "Next.js",
-  "Nuxt",
-  "Svelte",
-  "Express",
-  "Django",
-  "Spring",
-  "Laravel",
-];
-
-const CATEGORIES = [
-  "Utility Functions",
-  "Components",
-  "Hooks",
-  "Algorithms",
-  "Data Structures",
-  "API",
-  "Database",
-  "Authentication",
-  "Testing",
-  "DevOps",
-];
+import { FiltersSidebar } from "@/components/snippets/filters-sidebar";
+import { SnippetsGrid } from "@/components/snippets/snippets-grid";
 
 export default function SnippetsPage() {
   const router = useRouter();
@@ -70,6 +24,7 @@ export default function SnippetsPage() {
     searchParams.get("category") || "all"
   );
   const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [isOpen, setIsOpen] = useState(false);
 
   const fetchSnippets = async () => {
     setIsLoading(true);
@@ -114,115 +69,50 @@ export default function SnippetsPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Code Snippets</h1>
-          <Button>
+          <Button
+            variant="outline"
+            className="lg:hidden"
+            onClick={() => setIsOpen(!isOpen)}
+          >
             <Filter className="mr-2 h-4 w-4" />
             Filters
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[200px_1fr]">
-          {/* Filters */}
-          <div className="flex flex-col gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Language</label>
-              <Select
-                value={language}
-                onValueChange={(value) => {
-                  setLanguage(value);
-                  updateFilters("language", value === "all" ? "" : value);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Languages" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Languages</SelectItem>
-                  {LANGUAGES.map((lang) => (
-                    <SelectItem key={lang} value={lang}>
-                      {lang}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
+          <FiltersSidebar
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+            search={search}
+            language={language}
+            framework={framework}
+            category={category}
+            onSearchChange={(value) => {
+              setSearch(value);
+              updateFilters("search", value);
+            }}
+            onLanguageChange={(value) => {
+              setLanguage(value);
+              updateFilters("language", value === "all" ? "" : value);
+            }}
+            onFrameworkChange={(value) => {
+              setFramework(value);
+              updateFilters("framework", value === "all" ? "" : value);
+            }}
+            onCategoryChange={(value) => {
+              setCategory(value);
+              updateFilters("category", value === "all" ? "" : value);
+            }}
+            onReset={() => {
+              setLanguage("all");
+              setFramework("all");
+              setCategory("all");
+              setSearch("");
+              router.push("/snippets");
+            }}
+          />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Framework</label>
-              <Select
-                value={framework}
-                onValueChange={(value) => {
-                  setFramework(value);
-                  updateFilters("framework", value === "all" ? "" : value);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Frameworks" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Frameworks</SelectItem>
-                  {FRAMEWORKS.map((fw) => (
-                    <SelectItem key={fw} value={fw}>
-                      {fw}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Category</label>
-              <Select
-                value={category}
-                onValueChange={(value) => {
-                  setCategory(value);
-                  updateFilters("category", value === "all" ? "" : value);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Snippets Grid */}
-          <div className="space-y-6">
-            <Input
-              placeholder="Search snippets..."
-              className="max-w-md"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                updateFilters("search", e.target.value);
-              }}
-            />
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-[200px] rounded-lg border bg-muted/10 animate-pulse"
-                  />
-                ))
-              ) : snippets.length > 0 ? (
-                snippets.map((snippet) => (
-                  <SnippetCard key={snippet.id} snippet={snippet} />
-                ))
-              ) : (
-                <div className="col-span-full text-center">
-                  <p className="text-muted-foreground">No snippets found</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <SnippetsGrid snippets={snippets} isLoading={isLoading} />
         </div>
       </div>
     </div>

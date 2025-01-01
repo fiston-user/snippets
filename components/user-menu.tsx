@@ -70,7 +70,7 @@ export function UserMenu({ user }: UserMenuProps) {
         </DropdownMenuItem>
         <DropdownMenuItem
           className="cursor-pointer"
-          onClick={() => router.push("/snippets")}
+          onClick={() => router.push("/snippets/my")}
         >
           <Icons.post className="mr-2 h-4 w-4" />
           My Snippets

@@ -3,7 +3,12 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Add routes that require authentication
-const protectedRoutes = ["/snippets/create", "/profile", "/bookmarks"];
+const protectedRoutes = [
+  "/snippets/create",
+  "/snippets/my",
+  "/profile",
+  "/bookmarks",
+];
 
 // Add routes that are only accessible to non-authenticated users
 const authRoutes = ["/auth/signin", "/auth/signup"];

@@ -21,6 +21,7 @@ import {
   Plus,
   Search,
   Settings,
+  Sparkles,
   SunMedium,
   Trash,
   Twitter,
@@ -56,4 +57,5 @@ export const Icons = {
   bookmark: Bookmark,
   logout: LogOut,
   search: Search,
+  sparkles: Sparkles,
 };

@@ -89,15 +89,13 @@ export class AIResponseParser {
       // Remove any leading/trailing whitespace
       cleaned = cleaned.trim();
 
-      // Handle template literals and code blocks
-      cleaned = cleaned.replace(/`([^`]*)`/g, function (match, p1) {
-        return JSON.stringify(
-          p1.replace(/\r\n|\r|\n/g, "\n") // Normalize line endings
-        );
-      });
-
-      // Remove any duplicate closing braces that might have been added
-      cleaned = cleaned.replace(/\}\s*\}/g, "}");
+      // Fix escaped quotes and template literals
+      cleaned = cleaned
+        .replace(/\\"/g, '"')
+        .replace(/`([^`]*)`/g, (_, content) => {
+          // Properly escape template literals
+          return JSON.stringify(content.replace(/\${/g, "\\${"));
+        });
 
       return cleaned;
     }
@@ -106,24 +104,16 @@ export class AIResponseParser {
   private static extractJSON(text: string): string | null {
     try {
       // First try to parse the entire text as JSON
-      JSON.parse(text);
-      return text;
+      const parsed = JSON.parse(text);
+      return JSON.stringify(parsed); // Normalize the JSON
     } catch {
       // If that fails, try to find a valid JSON object
-      const possibleMatches = [
-        // Try to match the entire content between first { and last }
-        text.match(/\{[\s\S]*\}/),
-        // Try to match individual JSON objects
-        ...Array.from(text.matchAll(/\{(?:[^{}]|(?:\{[^{}]*\}))*\}/g)),
-      ]
-        .filter(Boolean)
-        .map((m) => m![0]);
+      const matches = text.match(/\{[\s\S]*\}/g) || [];
 
-      // Try each possible match
-      for (const match of possibleMatches) {
+      for (const match of matches) {
         try {
-          JSON.parse(match);
-          return match;
+          const parsed = JSON.parse(match);
+          return JSON.stringify(parsed); // Return normalized JSON
         } catch {
           continue;
         }
